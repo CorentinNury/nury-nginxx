@@ -1,0 +1,101 @@
+version: '2'
+
+services:
+  nginx-proxy:
+    image: jwilder/nginx-proxy
+    ports:
+      - "8081:80"
+    networks:
+      - wpd
+      - wpd2
+      - loadbalancer
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+
+  site1:
+   build: ./siteA/
+   networks:
+      - wpd2
+   environment: 
+    - SITELIEN=siteA
+    - VIRTUAL_HOST=sitea.local.training.ovh
+
+  site2:
+    build: ./siteB/
+    networks:
+      - wpd2
+    environment:
+      - SITELIEN=siteB
+      - VIRTUAL_HOST=siteb.local.training.ovh
+
+  phpmyadmin: 
+    image: phpmyadmin/phpmyadmin
+    networks:
+      - wpd
+    links:
+      - "db:mybase"
+    environment: 
+      - VIRTUAL_HOST=myawp.local.training.ovh
+
+  db:
+    image: mysql
+    command: --default-authentication-plugin=mysql_native_password
+    networks:
+      - wpd
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+
+  
+  wordpress:
+    image: wordpress
+    networks:
+      - wpd
+    environment:
+      VIRTUAL_HOST: wp.local.training.ovh
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: user
+      WORDPRESS_DB_PASSWORD: password
+      WORDPRESS_DB_NAME: dbwordpress
+
+  load-balancer:
+   build: ./load-balance
+   networks:
+    - loadbalancer
+   tty: true
+   links:
+    - nginxsite1
+    - nginxsite2
+   environment:
+    - VIRTUAL_HOST=sitec.local.training.ovh
+
+  nginxsite1:
+   build: ./nginx-site/siteA
+   tty: true
+   networks:
+    - loadbalancer
+
+  nginxsite2:
+   build: ./nginx-site/siteB
+   tty: true
+   networks:
+    - loadbalancer
+
+    
+networks:
+  wpd:
+    driver: bridge
+  wpd2:
+    driver: bridge
+  loadbalancer:
+   driver: bridge
+
+    
+
+
+
+
+
+
+
+
+
